@@ -107,33 +107,33 @@ def get_default_auto_fill_rules():
 @attr.s
 class Credentials(ConfigNode):
     username = attr.ib()
-    _passwd = attr.ib(default=None)
-    _totp = attr.ib(default=None)
+    passwd = attr.ib(default=None)
+    totp = attr.ib(default=None)
 
     @property
     def password(self):
-        if self._passwd is None:
+        if self.passwd is None:
             try:
                 return keyring.get_password(APP_NAME, self.username)
             except keyring.errors.KeyringError:
                 logger.info("Cannot retrieve saved password from keyring.")
                 return ""
         else:
-            return self._passwd
+            return self.passwd
 
     @password.setter
     def password(self, value):
-        if self._passwd is None:
+        if self.passwd is None:
             try:
                 keyring.set_password(APP_NAME, self.username, value)
             except keyring.errors.KeyringError:
                 logger.info("Cannot save password to keyring.")
         else:
-            self._passwd = value
+            self.passwd = value
 
     @property
-    def totp(self):
-        if self._totp is None:
+    def totp_code(self):
+        if self.totp is None:
             try:
                 totpsecret = keyring.get_password(APP_NAME, "totp/" + self.username)
                 return int(pyotp.TOTP(totpsecret).now()) if totpsecret else None
@@ -141,17 +141,17 @@ class Credentials(ConfigNode):
                 logger.info("Cannot retrieve saved totp info from keyring.")
                 return ""
         else:
-            return self._totp
+            return self.totp
 
-    @totp.setter
-    def totp(self, value):
-        if self._totp is None:
+    @totp_code.setter
+    def totp_code(self, value):
+        if self.totp is None:
             try:
                 keyring.set_password(APP_NAME, "totp/" + self.username, value)
             except keyring.errors.KeyringError:
                 logger.info("Cannot save totp secret to keyring.")
         else:
-            self._totp = value
+            self.totp = value
 
 
 @attr.s

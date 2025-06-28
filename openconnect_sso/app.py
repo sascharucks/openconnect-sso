@@ -59,8 +59,8 @@ def run(args):
     if using_command_line_creds:
         original_credentials = cfg.credentials
         cfg.credentials = Credentials("REDACTED")
-        cfg.credentials._passwd = "REDACTED"
-        cfg.credentials._totp = "REDACTED"
+        cfg.credentials.passwd = "REDACTED"
+        cfg.credentials.totp = "REDACTED"
     
     config.save(cfg)
     
@@ -126,9 +126,9 @@ async def _run(args, cfg):
         # Create credentials only from command-line args, ignore config
         credentials = Credentials(args.user)
         if args.passwd:
-            credentials._passwd = args.passwd
+            credentials.passwd = args.passwd
         if args.totp:
-            credentials._totp = args.totp
+            credentials.totp = args.totp
         # Ensure config has no credentials to save
         cfg.credentials = None
     else:
@@ -144,8 +144,8 @@ async def _run(args, cfg):
             if not credentials.password:
                 credentials.password = getpass.getpass(prompt=f"Password ({args.user}): ")
                 cfg.credentials = credentials
-            if not credentials.totp:
-                credentials.totp = getpass.getpass(
+            if not credentials.totp_code:
+                credentials.totp_code = getpass.getpass(
                     prompt=f"TOTP secret (leave blank if not required) ({args.user}): "
                 )
                 cfg.credentials = credentials
