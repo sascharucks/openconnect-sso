@@ -28,6 +28,7 @@ def run(args):
     configure_logger(logging.getLogger(), args.log_level)
 
     cfg = config.load()
+    using_command_line_creds = bool(args.passwd or args.totp or args.user)
 
     try:
         if os.name == "nt":
@@ -54,7 +55,18 @@ def run(args):
         logger.error(f"Request error: {exc}")
         return 4
 
+    # Always redact credentials when using command-line args before saving
+    if using_command_line_creds:
+        original_credentials = cfg.credentials
+        cfg.credentials = Credentials("REDACTED")
+        cfg.credentials._passwd = "REDACTED"
+        cfg.credentials._totp = "REDACTED"
+    
     config.save(cfg)
+    
+    # Restore original credentials after saving (in case they're needed)
+    if using_command_line_creds:
+        cfg.credentials = original_credentials
 
     if args.authenticate:
         logger.warn("Exiting after login, as requested")
@@ -108,27 +120,35 @@ def configure_logger(logger, level):
 
 
 async def _run(args, cfg):
-    credentials = None
-    if cfg.credentials:
-        credentials = cfg.credentials
-    elif args.user:
+    
+    # When using command-line credentials, completely bypass config credentials
+    if args.passwd or args.totp:
+        # Create credentials only from command-line args, ignore config
         credentials = Credentials(args.user)
-
-    if credentials and not credentials.password and args.passwd:
-        credentials._passwd = args.passwd
-        cfg.credentials = credentials
-    elif credentials and not credentials.password:
-        credentials.password = getpass.getpass(prompt=f"Password ({args.user}): ")
-        cfg.credentials = credentials
-
-    if credentials and not credentials.totp and args.totp:
-        credentials._totp = args.totp
-        cfg.credentials = credentials
-    elif credentials and not credentials.totp:
-        credentials.totp = getpass.getpass(
-            prompt=f"TOTP secret (leave blank if not required) ({args.user}): "
-        )
-        cfg.credentials = credentials
+        if args.passwd:
+            credentials._passwd = args.passwd
+        if args.totp:
+            credentials._totp = args.totp
+        # Ensure config has no credentials to save
+        cfg.credentials = None
+    else:
+        # No command-line credentials, use config or prompt
+        credentials = None
+        if cfg.credentials:
+            credentials = cfg.credentials
+        elif args.user:
+            credentials = Credentials(args.user)
+            
+        if credentials:
+            # Handle interactive credential entry (save to config)
+            if not credentials.password:
+                credentials.password = getpass.getpass(prompt=f"Password ({args.user}): ")
+                cfg.credentials = credentials
+            if not credentials.totp:
+                credentials.totp = getpass.getpass(
+                    prompt=f"TOTP secret (leave blank if not required) ({args.user}): "
+                )
+                cfg.credentials = credentials
 
     if cfg.default_profile and not (args.use_profile_selector or args.server):
         selected_profile = cfg.default_profile

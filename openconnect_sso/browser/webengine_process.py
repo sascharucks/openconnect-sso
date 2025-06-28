@@ -105,7 +105,7 @@ class Process(multiprocessing.Process):
         web = WebBrowser(cfg.auto_fill_rules, self._states.put, profile)
 
         startup_info = self._commands.get()
-        logger.info("Browser started", startup_info=startup_info)
+        logger.info("Browser started", url=startup_info.url)
 
         logger.info("Loading page", url=startup_info.url)
 
@@ -166,7 +166,7 @@ class WebBrowser(QWebEngineView):
         self.page().scripts().insert(script)
 
         if credentials:
-            logger.info("Initiating autologin", cred=credentials)
+            logger.info("Initiating autologin", username=credentials.username if credentials else None)
             for url_pattern, rules in self._auto_fill_rules.items():
                 script = QWebEngineScript()
                 script.setInjectionPoint(QWebEngineScript.InjectionPoint.DocumentReady)
